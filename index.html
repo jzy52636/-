@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金融函数记忆翻牌 - 颜色区分版</title>
+    <title>金融函数记忆挑战赛</title>
     <style>
         :root {
             --primary-color: #2c3e50;
-            --term-bg: #d1ecf1;       /* 英文：浅蓝色背景 */
-            --term-text: #0c5460;     /* 英文：深蓝色文字 */
-            --def-bg: #fff3cd;        /* 中文：浅橙色背景 */
-            --def-text: #856404;      /* 中文：深褐色文字 */
+            --term-back: #3498db;    /* 英文：蓝色 */
+            --def-back: #e67e22;     /* 中文：橙色 */
+            --card-front: #ffffff;
             --success-color: #27ae60;
-            --bg-color: #f8f9fa;
+            --penalty-color: #e74c3c;
+            --bg-color: #f0f2f5;
         }
 
         body {
@@ -26,65 +26,77 @@
             padding: 20px;
         }
 
-        h1 { color: var(--primary-color); margin-bottom: 20px; }
-        .stats { margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; }
+        h1 { color: var(--primary-color); margin-bottom: 5px; }
+        .desc { color: #666; margin-bottom: 15px; font-size: 0.9rem; text-align: center; }
+
+        /* 计分板样式 */
+        .scoreboard {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .stat-item { text-align: center; }
+        .stat-value { display: block; font-size: 1.5rem; font-weight: bold; color: var(--primary-color); }
+        .stat-label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        #score { color: var(--success-color); }
 
         .game-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 15px;
-            max-width: 800px;
+            max-width: 600px;
             width: 100%;
+            perspective: 1000px;
         }
 
-        @media (max-width: 600px) {
-            .game-container { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 500px) {
+            .game-container { grid-template-columns: repeat(3, 1fr); gap: 10px; }
         }
 
         .card {
             aspect-ratio: 3 / 2;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card.flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 15px;
+            padding: 10px;
             border-radius: 12px;
-            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             font-weight: bold;
-            font-size: 1.1rem;
-            transition: all 0.2s ease;
-            user-select: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border: 3px solid transparent;
-            word-break: break-all;
+            box-sizing: border-box;
         }
 
-        /* 英文函数名样式 - 蓝色系 */
-        .type-term {
-            background-color: var(--term-bg);
-            color: var(--term-text);
+        /* 背面 */
+        .card-back { color: white; font-size: 1.5rem; }
+        .type-term .card-back { background-color: var(--term-back); }
+        .type-def .card-back { background-color: var(--def-back); }
+
+        /* 正面 */
+        .card-front {
+            background-color: var(--card-front);
+            color: var(--primary-color);
+            transform: rotateY(180deg);
+            border: 2px solid #eee;
+            font-size: 0.9rem;
         }
 
-        /* 中文释义样式 - 橙色系 */
-        .type-def {
-            background-color: var(--def-bg);
-            color: var(--def-text);
-        }
-
-        /* 鼠标悬停微调 */
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-        }
-
-        /* 被选中/翻开时的状态：变深色并加边框 */
-        .card.flipped {
-            border-color: var(--primary-color);
-            filter: brightness(0.9);
-            transform: scale(1.05);
-        }
-
-        /* 已消除的状态：隐藏 */
         .card.matched {
             visibility: hidden;
             opacity: 0;
@@ -92,38 +104,59 @@
             transition: all 0.5s ease;
         }
 
+        /* 惩罚提示动画 */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .penalty-shake { animation: shake 0.3s inset; }
+
         #reset-btn {
             margin-top: 30px;
-            padding: 12px 30px;
+            padding: 12px 40px;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 25px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: bold;
+            transition: all 0.2s;
         }
-
-        #reset-btn:hover { background-color: #1a252f; }
+        #reset-btn:hover { transform: scale(1.05); background-color: #1a252f; }
 
         .win-message {
             display: none;
             margin-top: 20px;
-            color: var(--success-color);
-            font-weight: bold;
-            font-size: 1.8rem;
             text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>金融函数连连看</h1>
-    <div class="stats">尝试次数: <span id="moves">0</span></div>
+    <h1>金融函数记忆挑战</h1>
+    <p class="desc">匹配成功 +100 | 错误扣分 -10 | 忘记看过的牌额外 -20</p>
+
+    <div class="scoreboard">
+        <div class="stat-item">
+            <span class="stat-value" id="score">0</span>
+            <span class="stat-label">当前得分</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="moves">0</span>
+            <span class="stat-label">总步数</span>
+        </div>
+    </div>
 
     <div class="game-container" id="game-board"></div>
-    <div class="win-message" id="win-msg">恭喜！全部匹配完成！🎉</div>
-    <button id="reset-btn">重新开始游戏</button>
+
+    <div class="win-message" id="win-msg">
+        <h2 style="color: var(--success-color);">🎉 挑战完成！</h2>
+        <p id="final-stats"></p>
+    </div>
+
+    <button id="reset-btn">重新开始</button>
 
     <script>
         const dataPairs = [
@@ -138,8 +171,12 @@
         let flippedCards = [];
         let matchedCount = 0;
         let moves = 0;
+        let score = 0;
+        let seenCards = new Set(); // 用于记录玩家看过的牌的索引
+
         const gameBoard = document.getElementById('game-board');
         const movesDisplay = document.getElementById('moves');
+        const scoreDisplay = document.getElementById('score');
         const winMsg = document.getElementById('win-msg');
 
         function initGame() {
@@ -147,7 +184,12 @@
             flippedCards = [];
             matchedCount = 0;
             moves = 0;
+            score = 0;
+            seenCards.clear();
+            
             movesDisplay.innerText = moves;
+            scoreDisplay.innerText = score;
+            scoreDisplay.style.color = 'var(--success-color)';
             winMsg.style.display = 'none';
 
             let gameData = [];
@@ -156,25 +198,27 @@
                 gameData.push({ text: pair.def, pairId: index, type: 'def' });
             });
 
-            // 洗牌
+            // 随机洗牌
             gameData.sort(() => Math.random() - 0.5);
 
-            gameData.forEach(item => {
+            gameData.forEach((item, index) => {
                 const card = document.createElement('div');
-                card.classList.add('card');
-                // 直接根据类型添加颜色类
-                card.classList.add(item.type === 'term' ? 'type-term' : 'type-def');
+                card.className = `card ${item.type === 'term' ? 'type-term' : 'type-def'}`;
                 card.dataset.pairId = item.pairId;
-                card.innerText = item.text;
+                card.dataset.index = index; // 唯一的索引标识
+
+                card.innerHTML = `
+                    <div class="card-face card-back">?</div>
+                    <div class="card-face card-front">${item.text}</div>
+                `;
                 
-                card.addEventListener('click', () => handleClick(card));
+                card.addEventListener('click', () => handleFlip(card));
                 gameBoard.appendChild(card);
             });
         }
 
-        function handleClick(card) {
-            // 如果卡片已经消除，或者已经翻开，或者当前已经翻开了两张，则不处理
-            if (card.classList.contains('matched') || card.classList.contains('flipped') || flippedCards.length === 2) {
+        function handleFlip(card) {
+            if (flippedCards.length === 2 || card.classList.contains('flipped') || card.classList.contains('matched')) {
                 return;
             }
 
@@ -193,22 +237,51 @@
             const isMatch = card1.dataset.pairId === card2.dataset.pairId;
 
             if (isMatch) {
+                // 配对成功
+                score += 100;
+                matchedCount++;
                 setTimeout(() => {
                     card1.classList.add('matched');
                     card2.classList.add('matched');
-                    matchedCount++;
                     flippedCards = [];
+                    updateUI();
                     if (matchedCount === dataPairs.length) {
-                        winMsg.style.display = 'block';
+                        showWin();
                     }
-                }, 400);
+                }, 600);
             } else {
+                // 配对失败
+                let penalty = 10; // 基础扣分
+
+                // 检查是否触发记忆惩罚：
+                // 如果翻开的牌之前已经出现在“已看过”名单里，说明玩家忘记了位置
+                if (seenCards.has(card1.dataset.index)) penalty += 20;
+                if (seenCards.has(card2.dataset.index)) penalty += 20;
+
+                score -= penalty;
+
+                // 标记这两张牌为“已看过”
+                seenCards.add(card1.dataset.index);
+                seenCards.add(card2.dataset.index);
+
                 setTimeout(() => {
                     card1.classList.remove('flipped');
                     card2.classList.remove('flipped');
                     flippedCards = [];
-                }, 700);
+                    updateUI();
+                }, 1000);
             }
+        }
+
+        function updateUI() {
+            scoreDisplay.innerText = score;
+            // 如果分数为负，显示红色
+            scoreDisplay.style.color = score < 0 ? 'var(--penalty-color)' : 'var(--success-color)';
+        }
+
+        function showWin() {
+            winMsg.style.display = 'block';
+            document.getElementById('final-stats').innerText = `最终得分：${score} | 总计步数：${moves}`;
         }
 
         document.getElementById('reset-btn').addEventListener('click', initGame);
