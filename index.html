@@ -7,10 +7,12 @@
     <style>
         :root {
             --primary-color: #2c3e50;
-            --term-color: #3498db;       /* 函数名的颜色：蓝色 */
-            --def-color: #e67e22;        /* 释义的颜色：橙色 */
+            --term-bg: #d1ecf1;       /* 英文：浅蓝色背景 */
+            --term-text: #0c5460;     /* 英文：深蓝色文字 */
+            --def-bg: #fff3cd;        /* 中文：浅橙色背景 */
+            --def-text: #856404;      /* 中文：深褐色文字 */
             --success-color: #27ae60;
-            --bg-color: #f4f7f6;
+            --bg-color: #f8f9fa;
         }
 
         body {
@@ -24,96 +26,104 @@
             padding: 20px;
         }
 
-        h1 { color: var(--primary-color); margin-bottom: 10px; }
+        h1 { color: var(--primary-color); margin-bottom: 20px; }
         .stats { margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; }
 
         .game-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
+            gap: 15px;
             max-width: 800px;
             width: 100%;
         }
 
         @media (max-width: 600px) {
-            .game-container { grid-template-columns: repeat(3, 1fr); }
+            .game-container { grid-template-columns: repeat(2, 1fr); }
         }
 
         .card {
             aspect-ratio: 3 / 2;
-            background-color: #95a5a6; /* 未翻开时的背面颜色：灰色 */
-            color: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 10px;
-            border-radius: 8px;
+            padding: 15px;
+            border-radius: 12px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 0.9rem;
-            transition: transform 0.3s, background-color 0.3s;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
             user-select: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 3px solid transparent;
+            word-break: break-all;
         }
 
-        /* 问号样式 */
-        .card::before {
-            content: "?";
-            color: white;
-            font-size: 1.5rem;
-            position: absolute;
+        /* 英文函数名样式 - 蓝色系 */
+        .type-term {
+            background-color: var(--term-bg);
+            color: var(--term-text);
         }
 
-        /* 翻开后的样式 */
-        .card.flipped::before { display: none; }
-        .card.flipped { color: white; transform: rotateY(180deg); }
-
-        /* --- 颜色区分关键代码 --- */
-        /* 函数名卡片翻开后的颜色 */
-        .card.flipped.type-term {
-            background-color: var(--term-color) !important;
-        }
-        /* 释义卡片翻开后的颜色 */
-        .card.flipped.type-def {
-            background-color: var(--def-color) !important;
+        /* 中文释义样式 - 橙色系 */
+        .type-def {
+            background-color: var(--def-bg);
+            color: var(--def-text);
         }
 
+        /* 鼠标悬停微调 */
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+
+        /* 被选中/翻开时的状态：变深色并加边框 */
+        .card.flipped {
+            border-color: var(--primary-color);
+            filter: brightness(0.9);
+            transform: scale(1.05);
+        }
+
+        /* 已消除的状态：隐藏 */
         .card.matched {
             visibility: hidden;
             opacity: 0;
-            transition: opacity 0.5s, visibility 0.5s;
+            transform: scale(0);
+            transition: all 0.5s ease;
         }
 
         #reset-btn {
             margin-top: 30px;
-            padding: 10px 25px;
+            padding: 12px 30px;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
+            font-weight: bold;
         }
+
+        #reset-btn:hover { background-color: #1a252f; }
 
         .win-message {
             display: none;
             margin-top: 20px;
             color: var(--success-color);
             font-weight: bold;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>金融函数记忆翻牌</h1>
+    <h1>金融函数连连看</h1>
     <div class="stats">尝试次数: <span id="moves">0</span></div>
 
     <div class="game-container" id="game-board"></div>
-    <div class="win-message" id="win-msg">恭喜！全部匹配成功！🎉</div>
-    <button id="reset-btn">重新开始</button>
+    <div class="win-message" id="win-msg">恭喜！全部匹配完成！🎉</div>
+    <button id="reset-btn">重新开始游戏</button>
 
     <script>
         const dataPairs = [
@@ -142,27 +152,29 @@
 
             let gameData = [];
             dataPairs.forEach((pair, index) => {
-                // 标记类型：term 代表函数名，def 代表释义
                 gameData.push({ text: pair.term, pairId: index, type: 'term' });
                 gameData.push({ text: pair.def, pairId: index, type: 'def' });
             });
 
+            // 洗牌
             gameData.sort(() => Math.random() - 0.5);
 
             gameData.forEach(item => {
                 const card = document.createElement('div');
                 card.classList.add('card');
+                // 直接根据类型添加颜色类
                 card.classList.add(item.type === 'term' ? 'type-term' : 'type-def');
                 card.dataset.pairId = item.pairId;
                 card.innerText = item.text;
                 
-                card.addEventListener('click', () => flipCard(card));
+                card.addEventListener('click', () => handleClick(card));
                 gameBoard.appendChild(card);
             });
         }
 
-        function flipCard(card) {
-            if (flippedCards.length === 2 || card.classList.contains('flipped') || card.classList.contains('matched')) {
+        function handleClick(card) {
+            // 如果卡片已经消除，或者已经翻开，或者当前已经翻开了两张，则不处理
+            if (card.classList.contains('matched') || card.classList.contains('flipped') || flippedCards.length === 2) {
                 return;
             }
 
@@ -189,13 +201,13 @@
                     if (matchedCount === dataPairs.length) {
                         winMsg.style.display = 'block';
                     }
-                }, 600);
+                }, 400);
             } else {
                 setTimeout(() => {
                     card1.classList.remove('flipped');
                     card2.classList.remove('flipped');
                     flippedCards = [];
-                }, 1000);
+                }, 700);
             }
         }
 
