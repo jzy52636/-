@@ -238,7 +238,7 @@
 
             if (isMatch) {
                 // 配对成功
-                score += 100;
+                score += 6;
                 matchedCount++;
                 setTimeout(() => {
                     card1.classList.add('matched');
@@ -251,12 +251,12 @@
                 }, 600);
             } else {
                 // 配对失败
-                let penalty = 10; // 基础扣分
+                let penalty = 1; // 基础扣分
 
                 // 检查是否触发记忆惩罚：
                 // 如果翻开的牌之前已经出现在“已看过”名单里，说明玩家忘记了位置
-                if (seenCards.has(card1.dataset.index)) penalty += 20;
-                if (seenCards.has(card2.dataset.index)) penalty += 20;
+                if (seenCards.has(card1.dataset.index)) penalty += 2;
+                if (seenCards.has(card2.dataset.index)) penalty += 2;
 
                 score -= penalty;
 
