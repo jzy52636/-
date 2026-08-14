@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金融函数连连看 - 翻牌小游戏</title>
+    <title>金融函数记忆翻牌 - 颜色区分版</title>
     <style>
         :root {
             --primary-color: #2c3e50;
-            --accent-color: #3498db;
+            --term-color: #3498db;       /* 函数名的颜色：蓝色 */
+            --def-color: #e67e22;        /* 释义的颜色：橙色 */
             --success-color: #27ae60;
             --bg-color: #f4f7f6;
         }
@@ -24,13 +25,7 @@
         }
 
         h1 { color: var(--primary-color); margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 20px; }
-
-        .stats {
-            margin-bottom: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
+        .stats { margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; }
 
         .game-container {
             display: grid;
@@ -46,8 +41,8 @@
 
         .card {
             aspect-ratio: 3 / 2;
-            background-color: var(--accent-color);
-            color: white;
+            background-color: #95a5a6; /* 未翻开时的背面颜色：灰色 */
+            color: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -60,30 +55,35 @@
             transition: transform 0.3s, background-color 0.3s;
             user-select: none;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
         }
 
-        .card:hover { transform: translateY(-5px); }
+        /* 问号样式 */
+        .card::before {
+            content: "?";
+            color: white;
+            font-size: 1.5rem;
+            position: absolute;
+        }
 
-        .card.flipped {
-            background-color: #fff;
-            color: var(--primary-color);
-            border: 2px solid var(--accent-color);
+        /* 翻开后的样式 */
+        .card.flipped::before { display: none; }
+        .card.flipped { color: white; transform: rotateY(180deg); }
+
+        /* --- 颜色区分关键代码 --- */
+        /* 函数名卡片翻开后的颜色 */
+        .card.flipped.type-term {
+            background-color: var(--term-color) !important;
+        }
+        /* 释义卡片翻开后的颜色 */
+        .card.flipped.type-def {
+            background-color: var(--def-color) !important;
         }
 
         .card.matched {
-            background-color: var(--success-color);
-            color: white;
-            visibility: hidden; /* 消除效果：隐藏 */
+            visibility: hidden;
             opacity: 0;
             transition: opacity 0.5s, visibility 0.5s;
-        }
-
-        .hidden-content {
-            display: none;
-        }
-
-        .flipped .hidden-content {
-            display: block;
         }
 
         #reset-btn {
@@ -97,8 +97,6 @@
             font-size: 1rem;
         }
 
-        #reset-btn:hover { background-color: #1a252f; }
-
         .win-message {
             display: none;
             margin-top: 20px;
@@ -111,16 +109,10 @@
 <body>
 
     <h1>金融函数记忆翻牌</h1>
-    <p>将函数名与对应的释义匹配消除！</p>
-
     <div class="stats">尝试次数: <span id="moves">0</span></div>
 
-    <div class="game-container" id="game-board">
-        <!-- 动态生成卡片 -->
-    </div>
-
+    <div class="game-container" id="game-board"></div>
     <div class="win-message" id="win-msg">恭喜！全部匹配成功！🎉</div>
-
     <button id="reset-btn">重新开始</button>
 
     <script>
@@ -133,7 +125,6 @@
             { term: 'Type', def: '月初或月末还款' }
         ];
 
-        let cards = [];
         let flippedCards = [];
         let matchedCount = 0;
         let moves = 0;
@@ -141,7 +132,6 @@
         const movesDisplay = document.getElementById('moves');
         const winMsg = document.getElementById('win-msg');
 
-        // 初始化游戏
         function initGame() {
             gameBoard.innerHTML = '';
             flippedCards = [];
@@ -150,37 +140,33 @@
             movesDisplay.innerText = moves;
             winMsg.style.display = 'none';
 
-            // 创建成对的数据
             let gameData = [];
             dataPairs.forEach((pair, index) => {
-                gameData.push({ text: pair.term, pairId: index });
-                gameData.push({ text: pair.def, pairId: index });
+                // 标记类型：term 代表函数名，def 代表释义
+                gameData.push({ text: pair.term, pairId: index, type: 'term' });
+                gameData.push({ text: pair.def, pairId: index, type: 'def' });
             });
 
-            // 洗牌
             gameData.sort(() => Math.random() - 0.5);
 
-            // 生成卡片
             gameData.forEach(item => {
                 const card = document.createElement('div');
                 card.classList.add('card');
+                card.classList.add(item.type === 'term' ? 'type-term' : 'type-def');
                 card.dataset.pairId = item.pairId;
-                card.innerHTML = `<span class="hidden-content">${item.text}</span><span>?</span>`;
+                card.innerText = item.text;
                 
-                // 内部逻辑：点击事件
                 card.addEventListener('click', () => flipCard(card));
                 gameBoard.appendChild(card);
             });
         }
 
         function flipCard(card) {
-            // 避免重复点击或点击已匹配的
             if (flippedCards.length === 2 || card.classList.contains('flipped') || card.classList.contains('matched')) {
                 return;
             }
 
             card.classList.add('flipped');
-            card.querySelector('span:last-child').style.display = 'none'; // 隐藏问号
             flippedCards.push(card);
 
             if (flippedCards.length === 2) {
@@ -203,21 +189,17 @@
                     if (matchedCount === dataPairs.length) {
                         winMsg.style.display = 'block';
                     }
-                }, 500);
+                }, 600);
             } else {
                 setTimeout(() => {
                     card1.classList.remove('flipped');
                     card2.classList.remove('flipped');
-                    card1.querySelector('span:last-child').style.display = 'inline';
-                    card2.querySelector('span:last-child').style.display = 'inline';
                     flippedCards = [];
                 }, 1000);
             }
         }
 
         document.getElementById('reset-btn').addEventListener('click', initGame);
-
-        // 启动游戏
         initGame();
     </script>
 </body>
